@@ -6,22 +6,70 @@ using System.Linq;
 using System.Net;
 using System.Web;
 using System.Web.Mvc;
+using System.Web.Security;
 using ckeditor.Models;
 
 namespace ckeditor.Controllers
 {
     public class AccountsController : Controller
     {
+        Encrytion encry = new Encrytion();
+        ckedittorEntities2 db = new ckedittorEntities2();
         private ckedittorEntities2 db = new ckedittorEntities2();
 
         // GET: Accounts
-        public ActionResult Index()
+        [HttpGet]
+        public ActionResult Register()
         {
-            return View(db.Accounts.ToList());
+            return View();
         }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [AllowAnonymous]
+        public ActionResult Register(Account acc)
+        {
+            if (ModelState.Isvalid)
+            {
+                //mã hóa mật khẩu trước khi lưu vào database
+                acc.Password = encry.PasswordEncrytion(acc.Password);
+                db.Accounts.Add(acc);
+                db.Savechanges();
+                return RedirectToAction("Login", "Account");
+            }
+            return View(acc);
+        }
+        [HttpGet]
+         public ActionResult login()
+        {
+            return View();
+        }
+        public ActionResult Login(Account acc)
+        {
+            if (ModelState.IsValid)
+            {
+                string encrytionpass = encry.PasswordEncrytion(acc.Password);
+                var model = db.Accounts.Where(m => m.UserName == acc.UserName && m.Password == encrytionpass).ToList().Count();
+                //thông tin đăng nhập chính xác
+                if (model == 1)
+                {
+                    FormsAuthentication.SetAuthCookie(acc.UserName, true);
+                    return RedirectToAction("Index", "Home");
+                }
+                else
+                {
+                    ModelState.AddModelError("", "Thông tin đăng nhập không chính xác");
+                }
+            }
+            return View(acc);
+        }
+        public ActionResult Logout()
+        {
+            return RedirectToAction("Index","Home")
+        }
+           
 
-        // GET: Accounts/Details/5
-        public ActionResult Details(string id)
+            // GET: Accounts/Details/5
+            public ActionResult Details(string id)
         {
             if (id == null)
             {
